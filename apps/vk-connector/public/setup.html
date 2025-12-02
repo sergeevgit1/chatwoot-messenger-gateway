@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VK Connector Setup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .mode-btn.active {
+            background: rgba(102, 126, 234, 0.5);
+            border-color: #667eea;
+        }
+        .progress-container {
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .progress-step::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 1;
+        }
+        .progress-step:last-child::after {
+            display: none;
+        }
+        .progress-step.active::after {
+            background: #667eea;
+        }
+        .progress-step-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+        .progress-step.active .progress-step-circle {
+            background: #667eea;
+        }
+        .progress-step.completed .progress-step-circle {
+            background: #28a745;
+        }
+        .progress-step-label {
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+        .form-container {
+            display: none;
+        }
+        .form-container.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+        .input-hint {
+            font-size: 12px;
+            color: #b0b0b0;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #5a6268);
+        }
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20bf6b);
+        }
+        .btn-info {
+            background: linear-gradient(45deg, #17a2b8, #138496);
+        }
+        .results-container {
+            display: none;
+            margin-top: 30px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .results-container.show {
+            display: block;
+        }
+        .webhook-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .step-section {
+            display: none;
+        }
+        .step-section.active {
+            display: block;
+        }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+        .status-indicator.success {
+            background: #28a745;
+        }
+        .status-indicator.loading {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 VK Connector Setup</h1>
+        
+        <div class="mode-selector">
+            <div class="mode-btn active" id="autoModeBtn">
+                🤖 Автоматическая настройка
+            </div>
+            <div class="mode-btn" id="manualModeBtn">
+                ⚙️ Ручная настройка
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-step active" id="step1">
+                    <div class="progress-step-circle">1</div>
+                    <div class="progress-step-label">Настройка Chatwoot</div>
+                </div>
+                <div class="progress-step" id="step2">
+                    <div class="progress-step-circle">2</div>
+                    <div class="progress-step-label">Настройка VK</div>
+                </div>
+                <div class="progress-step" id="step3">
+                    <div class="progress-step-circle">3</div>
+                    <div class="progress-step-label">Сервер</div>
+                </div>
+                <div class="progress-step" id="step4">
+                    <div class="progress-step-circle">4</div>
+                    <div class="progress-step-label">Завершение</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Автоматическая настройка -->
+        <div class="form-container active" id="autoForm">
+            <form id="autoSetupForm">
+                <div class="step-section active" id="autoStep1">
+                    <h3>🤖 Настройка Chatwoot</h3>
+                    <div class="form-group">
+                        <label for="chatwoot_base_url">Chatwoot Base URL</label>
+                        <input type="url" id="chatwoot_base_url" required placeholder="https://your-chatwoot.com">
+                        <div class="input-hint">URL вашего Chatwoot сервера. Например: https://chatwoot.example.com</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="chatwoot_api_access_token">Chatwoot API Access Token</label>
+                        <input type="password" id="chatwoot_api_access_token" required>
+                        <div class="input-hint">Токен можно найти в настройках профиля Chatwoot: Профиль → Настройки → API Access Token</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="chatwoot_account_id">Chatwoot Account ID</label>
+                        <input type="number" id="chatwoot_account_id" required>
+                        <div class="input-hint">ID аккаунта Chatwoot. Обычно отображается в URL после входа в систему</div>
+                    </div>
+                    <button type="button" class="btn btn-info" id="testChatwootBtn">🔍 Проверить подключение к Chatwoot</button>
+                    <div id="chatwootStatus" class="connection-status" style="display: none;">
+                        <div class="status-indicator" id="chatwootStatusIndicator"></div>
+                        <span id="chatwootStatusText">Проверка подключения...</span>
+                    </div>
+                    <button type="button" class="btn" id="nextToVkBtn" style="display: none;">Далее →</button>
+                </div>
+
+                <div class="step-section" id="autoStep2">
+                    <h3>🔷 Настройка VK</h3>
+                    <div class="form-group">
+                        <label for="vk_access_token">VK Access Token</label>
+                        <input type="password" id="vk_access_token" required>
+                        <div class="input-hint">Токен доступа сообщества VK. Получите в настройках сообщества: Управление → Работа с API → Ключи доступа</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="vk_group_id">VK Group ID</label>
+                        <input type="number" id="vk_group_id" required>
+                        <div class="input-hint">ID вашего сообщества VK. Можно найти в URL страницы сообщества</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="vk_confirmation">VK Confirmation String</label>
+                        <input type="text" id="vk_confirmation" required>
+                        <div class="input-hint">Строка подтверждения из настроек Callback API VK: Управление → Работа с API → Callback API → Настройки сервера</div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="backToChatwootBtn">← Назад</button>
+                    <button type="button" class="btn" id="nextToServerBtn">Далее →</button>
+                </div>
+
+                <div class="step-section" id="autoStep3">
+                    <h3>🌐 Настройка сервера</h3>
+                    <div class="form-group">
+                        <label for="port">Порт сервера</label>
+                        <input type="number" id="port" value="3000" required>
+                        <div class="input-hint">Порт, на котором будет запущен коннектор. По умолчанию: 3000</div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="backToVkBtn">← Назад</button>
+                    <button type="button" class="btn btn-success" id="startAutoSetupBtn">🚀 Запустить автоматическую настройку</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Ручная настройка -->
+        <div class="form-container" id="manualForm">
+            <form id="manualSetupForm">
+                <div class="step">
+                    <h3>📋 VK Configuration</h3>
+                    <div class="form-group">
+                        <label for="manual_vk_callback_id">VK Callback ID</label>
+                        <input type="text" id="manual_vk_callback_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_group_id">VK Group ID</label>
+                        <input type="number" id="manual_vk_group_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_access_token">VK Access Token</label>
+                        <input type="password" id="manual_vk_access_token" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_secret">VK Secret</label>
+                        <input type="password" id="manual_vk_secret" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_confirmation">VK Confirmation String</label>
+                        <input type="text" id="manual_vk_confirmation" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_api_version">VK API Version</label>
+                        <input type="text" id="manual_vk_api_version" value="5.199">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_vk_inbox_id">VK Inbox ID</label>
+                        <input type="number" id="manual_vk_inbox_id" required>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>🤖 Chatwoot Configuration</h3>
+                    <div class="form-group">
+                        <label for="manual_chatwoot_api_access_token">Chatwoot API Access Token</label>
+                        <input type="password" id="manual_chatwoot_api_access_token" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_chatwoot_account_id">Chatwoot Account ID</label>
+                        <input type="number" id="manual_chatwoot_account_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_chatwoot_base_url">Chatwoot Base URL</label>
+                        <input type="url" id="manual_chatwoot_base_url" required placeholder="https://your-chatwoot.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_chatwoot_webhook_id_vk">Chatwoot Webhook ID for VK</label>
+                        <input type="text" id="manual_chatwoot_webhook_id_vk" required>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>🌐 Server Configuration</h3>
+                    <div class="form-group">
+                        <label for="manual_port">Server Port</label>
+                        <input type="number" id="manual_port" value="3000">
+                    </div>
+                    <div class="form-group">
+                        <label for="manual_host">Server Host</label>
+                        <input type="text" id="manual_host" value="0.0.0.0">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn">💾 Сохранить конфигурацию</button>
+                <button type="button" class="btn btn-info" id="getWebhookUrlsBtn">🌐 Получить URL вебхуков</button>
+                <button type="button" class="btn btn-secondary" id="startTunnelBtn">🚇 Запустить туннель</button>
+            </form>
+        </div>
+
+        <div class="results-container" id="resultsContainer">
+            <h3>🎉 Результаты настройки</h3>
+            <div id="resultsContent"></div>
+            <button type="button" class="btn" id="copyConfigBtn">📋 Копировать конфигурацию</button>
+            <button type="button" class="btn btn-info" id="startTunnelResultBtn">🚇 Запустить туннель</button>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let currentStep = 1;
+        let autoConfig = {};
+        let isAutoMode = true;
+
+        // Элементы DOM
+        const autoModeBtn = document.getElementById('autoModeBtn');
+        const manualModeBtn = document.getElementById('manualModeBtn');
+        const autoForm = document.getElementById('autoForm');
+        const manualForm = document.getElementById('manualForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const resultsContainer = document.getElementById('resultsContainer');
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadExistingConfig();
+        });
+
+        function setupEventListeners() {
+            // Переключение режимов
+            autoModeBtn.addEventListener('click', () => switchMode(true));
+            manualModeBtn.addEventListener('click', () => switchMode(false));
+
+            // Автоматическая настройка - шаги
+            document.getElementById('testChatwootBtn').addEventListener('click', testChatwootConnection);
+            document.getElementById('nextToVkBtn').addEventListener('click', () => goToStep(2));
+            document.getElementById('backToChatwootBtn').addEventListener('click', () => goToStep(1));
+            document.getElementById('nextToServerBtn').addEventListener('click', () => goToStep(3));
+            document.getElementById('backToVkBtn').addEventListener('click', () => goToStep(2));
+            document.getElementById('startAutoSetupBtn').addEventListener('click', startAutoSetup);
+
+            // Ручная настройка
+            document.getElementById('manualSetupForm').addEventListener('submit', handleManualSubmit);
+            document.getElementById('getWebhookUrlsBtn').addEventListener('click', generateWebhookUrls);
+            document.getElementById('startTunnelBtn').addEventListener('click', startTunnel);
+
+            // Результаты
+            document.getElementById('copyConfigBtn').addEventListener('click', copyConfig);
+            document.getElementById('startTunnelResultBtn').addEventListener('click', startTunnel);
+        }
+
+        function switchMode(isAuto) {
+            isAutoMode = isAuto;
+            
+            if (isAuto) {
+                autoModeBtn.classList.add('active');
+                manualModeBtn.classList.remove('active');
+                autoForm.classList.add('active');
+                manualForm.classList.remove('active');
+                progressContainer.style.display = 'block';
+            } else {
+                autoModeBtn.classList.remove('active');
+                manualModeBtn.classList.add('active');
+                autoForm.classList.remove('active');
+                manualForm.classList.add('active');
+                progressContainer.style.display = 'none';
+            }
+            
+            resultsContainer.classList.remove('show');
+        }
+
+        function goToStep(step) {
+            // Скрыть все шаги
+            document.querySelectorAll('.step-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Показать текущий шаг
+            document.getElementById(`autoStep${step}`).classList.add('active');
+            
+            // Обновить прогресс-бар
+            document.querySelectorAll('.progress-step').forEach((progressStep, index) => {
+                progressStep.classList.remove('active', 'completed');
+                if (index < step - 1) {
+                    progressStep.classList.add('completed');
+                } else if (index === step - 1) {
+                    progressStep.classList.add('active');
+                }
+            });
+            
+            currentStep = step;
+        }
+
+        async function testChatwootConnection() {
+            const baseUrl = document.getElementById('chatwoot_base_url').value;
+            const apiToken = document.getElementById('chatwoot_api_access_token').value;
+            const accountId = document.getElementById('chatwoot_account_id').value;
+            
+            if (!baseUrl || !apiToken || !accountId) {
+                showError('Пожалуйста, заполните все поля Chatwoot');
+                return;
+            }
+
+            const statusDiv = document.getElementById('chatwootStatus');
+            const statusIndicator = document.getElementById('chatwootStatusIndicator');
+            const statusText = document.getElementById('chatwootStatusText');
+            const nextBtn = document.getElementById('nextToVkBtn');
+            
+            statusDiv.style.display = 'flex';
+            statusIndicator.className = 'status-indicator loading';
+            statusText.textContent = 'Проверка подключения...';
+            
+            try {
+                const response = await fetch('/api/test-chatwoot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ baseUrl, apiToken, accountId })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusIndicator.className = 'status-indicator success';
+                    statusText.textContent = '✅ Подключение успешно установлено';
+                    nextBtn.style.display = 'block';
+                    
+                    // Сохраняем данные для следующего шага
+                    autoConfig.chatwoot_base_url = baseUrl;
+                    autoConfig.chatwoot_api_access_token = apiToken;
+                    autoConfig.chatwoot_account_id = accountId;
+                } else {
+                    statusIndicator.className = 'status-indicator';
+                    statusText.textContent = `❌ Ошибка: ${result.error}`;
+                    nextBtn.style.display = 'none';
+                }
+            } catch (error) {
+                statusIndicator.className = 'status-indicator';
+                statusText.textContent = `❌ Ошибка подключения: ${error.message}`;
+                nextBtn.style.display = 'none';
+            }
+        }
+
+        async function startAutoSetup() {
+            // Собираем данные с формы
+            autoConfig.vk_access_token = document.getElementById('vk_access_token').value;
+            autoConfig.vk_group_id = document.getElementById('vk_group_id').value;
+            autoConfig.vk_confirmation = document.getElementById('vk_confirmation').value;
+            autoConfig.port = document.getElementById('port').value;
+
+            if (!autoConfig.vk_access_token || !autoConfig.vk_group_id || !autoConfig.vk_confirmation) {
+                showError('Пожалуйста, заполните все поля VK');
+                return;
+            }
+
+            // Показываем загрузку
+            goToStep(4);
+            const resultsContent = document.getElementById('resultsContent');
+            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Выполняется автоматическая настройка...</div>';
+            resultsContainer.classList.add('show');
+
+            try {
+                const response = await fetch('/api/auto-setup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(autoConfig)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResults(result);
+                } else {
+                    showError(result.error || 'Произошла ошибка при настройке');
+                }
+            } catch (error) {
+                showError(`Ошибка: ${error.message}`);
+            }
+        }
+
+        function showResults(result) {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let html = '<div class="success">✅ Настройка успешно завершена!</div>';
+            
+            if (result.config) {
+                html += '<h4>📋 Конфигурация:</h4>';
+                html += '<div class="webhook-info">';
+                Object.entries(result.config).forEach(([key, value]) => {
+                    html += `${key}=${value}<br>`;
+                });
+                html += '</div>';
+            }
+            
+            if (result.webhooks) {
+                html += '<h4>🌐 URL вебхуков:</h4>';
+                html += '<div class="webhook-info">';
+                html += `<strong>VK Callback:</strong><br>${result.webhooks.vkCallback}<br><br>`;
+                html += `<strong>Chatwoot Webhook:</strong><br>${result.webhooks.chatwootWebhook}`;
+                html += '</div>';
+            }
+            
+            if (result.instructions) {
+                html += '<h4>📝 Следующие шаги:</h4>';
+                html += '<div class="webhook-info">';
+                html += result.instructions.replace(/\n/g, '<br>');
+                html += '</div>';
+            }
+            
+            resultsContent.innerHTML = html;
+            resultsContainer.classList.add('show');
+        }
+
+        function handleManualSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const config = {};
+            
+            for (let [key, value] of formData.entries()) {
+                config[key] = value;
+            }
+
+            showResults({
+                success: true,
+                config: config,
+                webhooks: {
+                    vkCallback: `https://your-domain.com/vk/callback/${config.manual_vk_callback_id}`,
+                    chatwootWebhook: `https://your-domain.com/chatwoot/webhook/${config.manual_chatwoot_webhook_id_vk}`
+                },
+                instructions: 'Сохраните конфигурацию и настройте вебхуки в соответствии с указанными URL'
+            });
+        }
+
+        function generateWebhookUrls() {
+            const vkCallbackId = document.getElementById('manual_vk_callback_id').value;
+            const chatwootWebhookId = document.getElementById('manual_chatwoot_webhook_id_vk').value;
+
+            if (!vkCallbackId || !chatwootWebhookId) {
+                showError('Пожалуйста, заполните VK Callback ID и Chatwoot Webhook ID');
+                return;
+            }
+
+            showResults({
+                success: true,
+                webhooks: {
+                    vkCallback: `https://your-domain.com/vk/callback/${vkCallbackId}`,
+                    chatwootWebhook: `https://your-domain.com/chatwoot/webhook/${chatwootWebhookId}`
+                },
+                instructions: 'Используйте эти URL для настройки вебхуков в VK и Chatwoot'
+            });
+        }
+
+        async function startTunnel() {
+            const port = autoConfig.port || document.getElementById('manual_port').value || '3000';
+            
+            const resultsContent = document.getElementById('resultsContent');
+            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Создание туннеля...</div>';
+            resultsContainer.classList.add('show');
+
+            try {
+                const response = await fetch('/api/tunnel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ port })
+                });
+
+                const result = await response.json();
+                
+                if (result.url) {
+                    let html = '<div class="success">✅ Туннель успешно создан!</div>';
+                    html += '<div class="webhook-info">';
+                    html += `<strong>Публичный URL:</strong><br>${result.url}<br><br>`;
+                    html += `<strong>VK Callback:</strong><br>${result.url}/vk/callback/${autoConfig.VK_CALLBACK_ID || 'your-callback-id'}<br><br>`;
+                    html += `<strong>Chatwoot Webhook:</strong><br>${result.url}/chatwoot/webhook/${autoConfig.CHATWOOT_WEBHOOK_ID_VK || 'your-webhook-id'}`;
+                    html += '</div>';
+                    resultsContent.innerHTML = html;
+                } else {
+                    showError(result.error || 'Не удалось создать туннель');
+                }
+            } catch (error) {
+                showError(`Ошибка: ${error.message}`);
+            }
+        }
+
+        function copyConfig() {
+            const configText = document.querySelector('.webhook-info').textContent;
+            
+            navigator.clipboard.writeText(configText).then(() => {
+                const btn = document.getElementById('copyConfigBtn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Скопировано!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Ошибка копирования:', err);
+            });
+        }
+
+        function loadExistingConfig() {
+            // Попытка загрузить существующую конфигурацию
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(config => {
+                    if (config.error) {
+                        return;
+                    }
+                    
+                    // Заполнение формы автоматической настройки
+                    if (config.chatwoot_base_url) document.getElementById('chatwoot_base_url').value = config.chatwoot_base_url;
+                    if (config.chatwoot_api_access_token) document.getElementById('chatwoot_api_access_token').value = config.chatwoot_api_access_token;
+                    if (config.chatwoot_account_id) document.getElementById('chatwoot_account_id').value = config.chatwoot_account_id;
+                    if (config.vk_access_token) document.getElementById('vk_access_token').value = config.vk_access_token;
+                    if (config.vk_group_id) document.getElementById('vk_group_id').value = config.vk_group_id;
+                    if (config.vk_confirmation) document.getElementById('vk_confirmation').value = config.vk_confirmation;
+                    if (config.port) document.getElementById('port').value = config.port;
+                    
+                    // Заполнение формы ручной настройки
+                    Object.entries(config).forEach(([key, value]) => {
+                        const input = document.getElementById(`manual_${key}`);
+                        if (input) {
+                            input.value = value;
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.warn('Не удалось загрузить существующую конфигурацию:', error);
+                });
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "@chatwoot-connectors/shared-utils",
+  "version": "1.0.0",
+  "description": "Shared utilities for Chatwoot connectors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@chatwoot-connectors/shared-types": "file:../types"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

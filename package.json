@@ -1,0 +1,23 @@
+{
+  "name": "chatwoot-connectors",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "install:vk": "npm install --workspace=vk-connector",
+    "start:vk": "npm run start --workspace=vk-connector",
+    "dev:vk": "npm run dev --workspace=vk-connector",
+    "build:vk": "npm run build --workspace=vk-connector"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "packageManager": "npm@10.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

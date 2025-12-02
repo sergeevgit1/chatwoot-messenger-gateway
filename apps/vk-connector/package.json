@@ -1,0 +1,31 @@
+{
+  "name": "@chatwoot-connectors/vk-connector",
+  "version": "1.0.0",
+  "description": "VK connector for Chatwoot integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "auto-setup": "node scripts/auto-setup.js",
+    "auto-tunnel": "node scripts/auto-setup.js --tunnel",
+    "tunnel": "node scripts/auto-setup.js --tunnel"
+  },
+  "dependencies": {
+    "@chatwoot-connectors/shared-types": "file:../../packages/shared/types",
+    "@chatwoot-connectors/shared-utils": "file:../../packages/shared/utils",
+    "@chatwoot-connectors/chatwoot-client": "file:../../packages/shared/chatwoot-client",
+    "express": "^4.18.0",
+    "dotenv": "^16.0.0",
+    "node-fetch": "^2.7.0",
+    "ngrok": "^4.3.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/express": "^4.17.0",
+    "@types/node-fetch": "^2.6.2"
+  }
+}
