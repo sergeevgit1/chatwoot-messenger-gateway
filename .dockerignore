@@ -4,6 +4,7 @@ npm-debug.log
 .gitignore
 README.md
 .env
+!apps/vk-connector/.env
 .nyc_output
 coverage
 .nyc_output
