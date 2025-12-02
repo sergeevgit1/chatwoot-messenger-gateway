@@ -117,6 +117,14 @@ async function startServer(): Promise<void> {
       console.log(`[server] VK Connector started on ${config.server.host}:${config.server.port}`);
       console.log(`[server] VK Group ID: ${config.vk.group_id}`);
       console.log(`[server] Chatwoot Account ID: ${config.chatwoot.account_id}`);
+      
+      // Вывод информации о вебхуках
+      const protocol = config.server.port === 443 ? 'https' : 'http';
+      const domain = config.server.domain;
+      const port = config.server.port !== 80 && config.server.port !== 443 ? `:${config.server.port}` : '';
+      
+      console.log(`[server] VK Callback URL: ${protocol}://${domain}${port}/vk/callback/${config.vk.callback_id}`);
+      console.log(`[server] Chatwoot Webhook URL: ${protocol}://${domain}${port}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
     });
   } catch (error) {
     console.error('[server] Failed to start server:', error);

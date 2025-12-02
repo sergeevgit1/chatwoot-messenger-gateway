@@ -19,13 +19,13 @@ COPY apps/vk-connector/ ./apps/vk-connector/
 COPY tsconfig.json ./
 COPY turbo.json ./
 
-# Build shared packages first using tsc directly
-RUN cd packages/shared/types && npx tsc
-RUN cd packages/shared/utils && npx tsc
-RUN cd packages/shared/chatwoot-client && npx tsc
+# Clean and build shared packages first using tsc directly
+RUN cd packages/shared/types && npm run clean && npx tsc
+RUN cd packages/shared/utils && npm run clean && npx tsc
+RUN cd packages/shared/chatwoot-client && npm run clean && npx tsc
 
 # Build the VK connector
-RUN cd apps/vk-connector && npx tsc
+RUN cd apps/vk-connector && npm run clean && npx tsc
 
 # Stage 2: Production stage
 FROM node:18-alpine AS production
@@ -49,7 +49,9 @@ COPY apps/vk-connector/package*.json ./apps/vk-connector/
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy built artifacts from builder stage
-COPY --from=builder --chown=vkconnector:nodejs /app/packages/*/dist ./packages/*/dist
+COPY --from=builder --chown=vkconnector:nodejs /app/packages/shared/types/dist ./packages/shared/types/dist
+COPY --from=builder --chown=vkconnector:nodejs /app/packages/shared/utils/dist ./packages/shared/utils/dist
+COPY --from=builder --chown=vkconnector:nodejs /app/packages/shared/chatwoot-client/dist ./packages/shared/chatwoot-client/dist
 COPY --from=builder --chown=vkconnector:nodejs /app/apps/vk-connector/dist ./apps/vk-connector/dist
 COPY --from=builder --chown=vkconnector:nodejs /app/apps/vk-connector/public ./apps/vk-connector/public
 
