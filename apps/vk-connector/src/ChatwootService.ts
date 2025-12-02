@@ -84,7 +84,7 @@ export class ChatwootService implements IChatwootService {
       // Update attributes only if provided
       if (params.custom_attributes || params.additional_attributes !== undefined) {
         try {
-          await this.client.updateContact({
+          const updateParams = {
             contact_id: contactId,
             name: undefined,
             phone_number: undefined,
@@ -92,7 +92,11 @@ export class ChatwootService implements IChatwootService {
             identifier: vkIdentifier,
             custom_attributes: params.custom_attributes,
             additional_attributes: params.additional_attributes,
-          });
+          };
+          
+          console.info('[chatwoot] Updating contact with params:', JSON.stringify(updateParams, null, 2));
+          const updated = await this.client.updateContact(updateParams);
+          console.info('[chatwoot] Update contact response:', JSON.stringify(updated, null, 2));
         } catch (e) {
           console.warn('[chatwoot] update_contact skipped:', e);
         }
@@ -110,7 +114,7 @@ export class ChatwootService implements IChatwootService {
         }
       }
     } else {
-      const created = await this.client.createContact({
+      const createParams = {
         inbox_id: params.inbox_id,
         name: params.name || params.search_key,
         phone_number: params.phone,
@@ -118,7 +122,10 @@ export class ChatwootService implements IChatwootService {
         identifier: vkIdentifier,
         custom_attributes: params.custom_attributes || {},
         additional_attributes: params.additional_attributes || {},
-      });
+      };
+      
+      console.info('[chatwoot] Creating contact with params:', JSON.stringify(createParams, null, 2));
+      const created = await this.client.createContact(createParams);
       
       const payload = (created || {}).payload || {};
       contact = payload.contact || (created as any).contact || {};
@@ -237,6 +244,7 @@ export class ChatwootService implements IChatwootService {
         this.vkConfig.api_version,
         fromId
       );
+      console.info('[vk] fetchVkProfile response for user', fromId, ':', JSON.stringify(profile, null, 2));
       
       const firstName = (profile.first_name || '').trim();
       const lastName = (profile.last_name || '').trim();
@@ -321,11 +329,16 @@ export class ChatwootService implements IChatwootService {
       console.warn('[vk] Failed to fetch profile:', e);
     }
 
-    return {
+    const result = {
       name: vkName || fromId,
       custom_attributes: customAttributes,
       additional_attributes: additionalAttributes,
     };
+    
+    console.info('[vk] enrichVkContact result:', JSON.stringify(result, null, 2));
+    console.info('[vk] additional_attributes count:', Object.keys(additionalAttributes).length);
+    
+    return result;
   }
 
   private extractSourceIdForInbox(
