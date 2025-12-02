@@ -39,7 +39,6 @@ services:
       dockerfile: apps/vk-connector/Dockerfile
     environment:
       - NODE_ENV=production
-      - HOST=0.0.0.0
     env_file:
       - .env
     labels:
@@ -58,6 +57,8 @@ services:
     networks:
       - dokploy-network
 ```
+
+**Важно:** В production не нужно указывать `HOST=0.0.0.0`, так как Traefik обрабатывает маршрутизацию на все интерфейсы. Приложение должно слушать `0.0.0.0` только внутри контейнера.
 
 ### 4. Проверьте логи Traefik
 
