@@ -45,14 +45,23 @@ export class ChatwootService implements IChatwootService {
 
     if (attrLookupKeys.length > 0) {
       try {
-        const res = await this.client.filterContacts(
-          Object.fromEntries(
-            attrLookupKeys.map(key => [key, params.custom_attributes[key]])
-          )
+        const filterParams = Object.fromEntries(
+          attrLookupKeys.map(key => [key, params.custom_attributes[key]])
         );
+        console.log('[chatwoot] filterContacts called with params:', JSON.stringify(filterParams, null, 2));
+        const res = await this.client.filterContacts(filterParams);
         contacts = (res || {}).payload || [];
       } catch (e) {
+        // Улучшенная обработка ошибки 422 - не прерываем процесс
         console.warn('[chatwoot] filter_contacts failed:', e);
+        
+        // Если это ошибка 422, логируем детали и продолжаем с searchContacts
+        if (e instanceof Error && e.message.includes('status: 422')) {
+          console.warn('[chatwoot] filter_contacts returned 422, falling back to search_contacts');
+        } else {
+          // Для других ошибок тоже продолжаем, но логируем
+          console.warn('[chatwoot] filter_contacts error, falling back to search_contacts');
+        }
       }
     }
 

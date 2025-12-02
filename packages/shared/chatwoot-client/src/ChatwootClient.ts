@@ -58,10 +58,14 @@ export class ChatwootClient implements IChatwootClient {
         attribute_key: key,
         filter_operator: 'equal_to',
         values: [String(value)],
+        query_operator: 'AND'  // Добавляем обязательное поле query_operator
       });
     }
     
     const payload = { payload: filters };
+
+    console.log('[chatwoot] filterContacts request URL:', url);
+    console.log('[chatwoot] filterContacts request payload:', JSON.stringify(payload, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -70,7 +74,10 @@ export class ChatwootClient implements IChatwootClient {
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[chatwoot] filterContacts error response:', errorText);
+      console.error('[chatwoot] filterContacts request payload:', JSON.stringify(payload, null, 2));
+      throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
     }
     
     return response.json() as Record<string, any>;
