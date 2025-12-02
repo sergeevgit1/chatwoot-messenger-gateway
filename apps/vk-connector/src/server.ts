@@ -100,43 +100,91 @@ async function handleChatwootOutgoing(payload: any): Promise<void> {
   try {
     console.info('[server] Chatwoot outgoing webhook payload:', JSON.stringify(payload, null, 2));
     
+    // Skip private messages (internal notes)
+    if (payload.private === true) {
+      console.info('[server] Skipping private message (internal note)');
+      return;
+    }
+    
     const content = payload.content || '';
     const conversation = payload.conversation || {};
     const meta = conversation.meta || {};
-    const sender = meta.sender || {};
-    const channel = meta.channel;
-
-    if (channel !== 'vk') {
-      console.info(`[server] Ignoring non-VK message: channel=${channel}`);
+    const contactSender = meta.sender || {}; // This is the CONTACT (VK user), not the agent
+    const contactInbox = conversation.contact_inbox || {};
+    
+    // Check channel - can be in conversation.channel or meta.channel
+    const channel = conversation.channel || meta.channel || '';
+    const channelLower = channel.toLowerCase();
+    
+    // VK channel can be "vk", "Channel::Api", or custom name
+    // For API channels, we rely on custom_attributes to identify VK
+    const isVkChannel = channelLower.includes('vk') || channelLower.includes('api');
+    
+    if (!isVkChannel) {
+      console.info(`[server] Ignoring non-VK/API message: channel=${channel}`);
       return;
     }
 
     // Extract recipient_id from multiple possible locations
-    let recipientId = 
-      // Try conversation custom attributes first (most reliable)
-      conversation.custom_attributes?.vk_user_id ||
-      conversation.custom_attributes?.vk_peer_id ||
-      // Try contact custom attributes
-      sender.custom_attributes?.vk_user_id ||
-      sender.custom_attributes?.vk_peer_id ||
-      // Try additional attributes
-      sender.additional_attributes?.vk_user_id;
+    let recipientId: string | undefined;
+    
+    // 1. Try conversation custom attributes (most reliable - we set this)
+    recipientId = conversation.custom_attributes?.vk_user_id ||
+                  conversation.custom_attributes?.vk_peer_id;
+    
+    // 2. Try contact (meta.sender) custom attributes
+    if (!recipientId) {
+      recipientId = contactSender.custom_attributes?.vk_user_id ||
+                    contactSender.custom_attributes?.vk_peer_id;
+    }
+    
+    // 3. Try contact additional attributes
+    if (!recipientId) {
+      recipientId = contactSender.additional_attributes?.vk_user_id;
+    }
+    
+    // 4. Try to parse from contact_inbox.source_id (format: "vk:123456" or just "123456")
+    if (!recipientId && contactInbox.source_id) {
+      const sourceId = String(contactInbox.source_id);
+      if (sourceId.startsWith('vk:')) {
+        recipientId = sourceId.substring(3);
+      } else if (/^\d+$/.test(sourceId)) {
+        // If it's just digits, assume it's VK user ID
+        recipientId = sourceId;
+      }
+    }
+    
+    // 5. Try contact ID as last resort (if it's a number)
+    if (!recipientId && contactSender.id && /^\d+$/.test(String(contactSender.id))) {
+      console.warn('[server] Using contact.id as fallback for VK user ID');
+      recipientId = String(contactSender.id);
+    }
 
     if (!recipientId) {
-      console.error('[server] Missing VK recipient_id in Chatwoot webhook');
+      console.error('[server] ❌ Missing VK recipient_id in Chatwoot webhook');
+      console.error('[server] Channel:', channel);
+      console.error('[server] Conversation ID:', conversation.id);
       console.error('[server] Conversation custom_attributes:', conversation.custom_attributes);
-      console.error('[server] Sender custom_attributes:', sender.custom_attributes);
-      console.error('[server] Sender additional_attributes:', sender.additional_attributes);
+      console.error('[server] Contact (meta.sender):', {
+        id: contactSender.id,
+        name: contactSender.name,
+        custom_attributes: contactSender.custom_attributes,
+        additional_attributes: contactSender.additional_attributes
+      });
+      console.error('[server] Contact inbox:', contactInbox);
       return;
     }
 
+    console.info(`[server] 📤 Sending to VK: recipient=${recipientId} content="${content}"`);
     await vkAdapter.sendText(String(recipientId), { type: 'text', text: content });
     
-    console.info(
-      `[server] Sent message to VK: recipient=${recipientId} content="${content}"`
-    );
+    console.info(`[server] ✅ Message sent to VK successfully`);
   } catch (error) {
-    console.error('[server] Failed to send message to VK:', error);
+    console.error('[server] ❌ Failed to send message to VK:', error);
+    if (error instanceof Error) {
+      console.error('[server] Error details:', error.message);
+      console.error('[server] Stack trace:', error.stack);
+    }
   }
 }
 
