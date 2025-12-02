@@ -39,6 +39,21 @@ app.get('/health', (req: any, res: any) => {
   });
 });
 
+// Root route - redirect to health check or show info
+app.get('/', (req: any, res: any) => {
+  res.json({
+    service: 'VK Connector for Chatwoot',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      vk_callback: `/vk/callback/${config.vk.callback_id}`,
+      chatwoot_webhook: `/chatwoot/webhook/${config.chatwoot.webhook_id}`,
+      api: '/api'
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // VK Callback endpoint
 app.post(`/vk/callback/${config.vk.callback_id}`, async (req: any, res: any) => {
   try {
