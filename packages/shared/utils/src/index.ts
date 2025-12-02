@@ -1,1 +1,1 @@
-export * from './vk.js';
+export * from './vk';

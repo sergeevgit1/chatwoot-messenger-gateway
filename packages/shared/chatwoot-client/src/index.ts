@@ -1,1 +1,1 @@
-export { ChatwootClient } from './ChatwootClient.js';
+export { ChatwootClient } from './ChatwootClient';

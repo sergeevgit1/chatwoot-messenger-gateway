@@ -1,10 +1,10 @@
 import express from 'express';
-import { loadConfig } from './config.js';
-import { VKAdapter } from './VKAdapter.js';
-import { ChatwootService } from './ChatwootService.js';
+import { loadConfig } from './config';
+import { VKAdapter } from './VKAdapter';
+import { ChatwootService } from './ChatwootService';
 import { ChatwootClient } from '@chatwoot-connectors/chatwoot-client';
 import { VKCallbackPayload } from '@chatwoot-connectors/shared-types';
-import apiRouter from './api.js';
+import apiRouter from './api';
 import path from 'path';
 
 // Load configuration

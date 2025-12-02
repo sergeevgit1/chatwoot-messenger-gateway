@@ -1,0 +1,5 @@
+version: "2"
+tunnels:
+  vk-connector:
+    proto: http
+    addr: 3000

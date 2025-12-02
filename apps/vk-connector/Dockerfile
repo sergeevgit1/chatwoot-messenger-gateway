@@ -11,7 +11,7 @@ COPY packages/ ./packages/
 COPY apps/vk-connector/package*.json ./apps/vk-connector/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY packages/ ./packages/
@@ -19,13 +19,13 @@ COPY apps/vk-connector/ ./apps/vk-connector/
 COPY tsconfig.json ./
 COPY turbo.json ./
 
-# Build shared packages first
-RUN npm run build --workspace=@chatwoot-connectors/shared-types
-RUN npm run build --workspace=@chatwoot-connectors/shared-utils
-RUN npm run build --workspace=@chatwoot-connectors/chatwoot-client
+# Build shared packages first using tsc directly
+RUN cd packages/shared/types && npx tsc
+RUN cd packages/shared/utils && npx tsc
+RUN cd packages/shared/chatwoot-client && npx tsc
 
 # Build the VK connector
-RUN npm run build --workspace=vk-connector
+RUN cd apps/vk-connector && npx tsc
 
 # Stage 2: Production stage
 FROM node:18-alpine AS production
@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "apps/vk-connector/dist/index.js"]
+CMD ["node", "apps/vk-connector/dist/server.js"]
