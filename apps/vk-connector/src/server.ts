@@ -126,12 +126,18 @@ async function startServer(): Promise<void> {
         console.log(`[server] VK Callback URL: ${domain}/vk/callback/${config.vk.callback_id}`);
         console.log(`[server] Chatwoot Webhook URL: ${domain}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
       } else {
-        // Иначе добавляем протокол в зависимости от порта
-        const protocol = config.server.port === 443 ? 'https' : 'http';
-        const port = config.server.port !== 80 && config.server.port !== 443 ? `:${config.server.port}` : '';
-        
-        console.log(`[server] VK Callback URL: ${protocol}://${domain}${port}/vk/callback/${config.vk.callback_id}`);
-        console.log(`[server] Chatwoot Webhook URL: ${protocol}://${domain}${port}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+        // Для production через Traefik используем HTTPS без порта
+        // Для разработки добавляем порт если он не стандартный
+        if (config.server.node_env === 'production') {
+          console.log(`[server] VK Callback URL: https://${domain}/vk/callback/${config.vk.callback_id}`);
+          console.log(`[server] Chatwoot Webhook URL: https://${domain}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+        } else {
+          const protocol = config.server.port === 443 ? 'https' : 'http';
+          const port = config.server.port !== 80 && config.server.port !== 443 ? `:${config.server.port}` : '';
+          
+          console.log(`[server] VK Callback URL: ${protocol}://${domain}${port}/vk/callback/${config.vk.callback_id}`);
+          console.log(`[server] Chatwoot Webhook URL: ${protocol}://${domain}${port}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+        }
       }
     });
   } catch (error) {

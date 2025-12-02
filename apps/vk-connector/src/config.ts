@@ -16,6 +16,7 @@ export interface AppConfig {
     port: number;
     host: string;
     domain: string;
+    node_env: string;
   };
 }
 
@@ -52,6 +53,7 @@ export function loadConfig(): AppConfig {
       port: parseInt(getOptionalEnv('PORT', '3000')),
       host: getOptionalEnv('HOST', '0.0.0.0'),
       domain: getOptionalEnv('DOMAIN', 'localhost'),
+      node_env: getOptionalEnv('NODE_ENV', 'development'),
     },
   };
 }
