@@ -128,7 +128,7 @@ async function startServer(): Promise<void> {
   try {
     await vkAdapter.start();
     
-    app.listen(config.server.port, config.server.host, () => {
+    app.listen(config.server.port, config.server.node_env === 'production' ? '0.0.0.0' : config.server.host, () => {
       console.log(`[server] VK Connector started on ${config.server.host}:${config.server.port}`);
       console.log(`[server] VK Group ID: ${config.vk.group_id}`);
       console.log(`[server] Chatwoot Account ID: ${config.chatwoot.account_id}`);
