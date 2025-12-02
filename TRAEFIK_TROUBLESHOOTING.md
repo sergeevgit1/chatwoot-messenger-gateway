@@ -29,18 +29,23 @@ curl -s http://localhost:3000/health
 
 ### 3. Проверьте сетевые настройки в Dokploy
 
-Убедитесь, что в docker-compose.yml правильно настроены:
+Используйте правильный docker-compose.yml для production:
 
 ```yaml
+# Используйте этот файл для production развертывания
 services:
   vk-connector:
     build:
       context: .
       dockerfile: apps/vk-connector/Dockerfile
+    container_name: vk-connector
     environment:
       - NODE_ENV=production
     env_file:
       - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
@@ -58,7 +63,9 @@ services:
       - dokploy-network
 ```
 
-**Важно:** В production не нужно указывать `HOST=0.0.0.0`, так как Traefik обрабатывает маршрутизацию на все интерфейсы. Приложение должно слушать `0.0.0.0` только внутри контейнера.
+**Важно:** В production не нужно указывать `PORT` и `HOST` в environment, так как Traefik обрабатывает маршрутизацию. Приложение должно слушать `0.0.0.0:3000` внутри контейнера.
+
+**Правильный файл:** `docker-compose.prod.yml` - содержит только необходимые настройки для production
 
 ### 4. Проверьте логи Traefik
 
@@ -116,6 +123,9 @@ docker-compose ps
 # Проверка сети
 docker network ls
 docker network inspect dokploy-network
+
+# Проверка логов контейнера
+docker logs vk-connector -f --tail=100
 ```
 
 ## Если ничего не помогает:
@@ -123,3 +133,10 @@ docker network inspect dokploy-network
 1. Проверьте панель управления Dokploy
 2. Свяжитесь с поддержкой Dokploy
 3. Временно попробуйте прямой доступ через IP-адрес сервера
+
+## Рекомендации:
+
+1. Используйте `docker-compose.prod.yml` для production развертывания
+2. Не указывайте `PORT` и `HOST` в environment секции docker-compose.yml
+3. Убедитесь в правильности именования сервисов в labels
+4. Проверяйте логи как Traefik, так и приложения
