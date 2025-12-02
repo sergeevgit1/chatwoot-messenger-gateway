@@ -129,7 +129,7 @@ async function startServer(): Promise<void> {
     await vkAdapter.start();
     
     app.listen(config.server.port, config.server.node_env === 'production' ? '0.0.0.0' : config.server.host, () => {
-      console.log(`[server] VK Connector started on ${config.server.host}:${config.server.port}`);
+      console.log(`[server] VK Connector started on ${config.server.node_env === 'production' ? '0.0.0.0' : config.server.host}:${config.server.port}`);
       console.log(`[server] VK Group ID: ${config.vk.group_id}`);
       console.log(`[server] Chatwoot Account ID: ${config.chatwoot.account_id}`);
       
@@ -138,8 +138,10 @@ async function startServer(): Promise<void> {
       
       // Если домен уже содержит протокол, используем его как есть
       if (domain.startsWith('http://') || domain.startsWith('https://')) {
-        console.log(`[server] VK Callback URL: ${domain}/vk/callback/${config.vk.callback_id}`);
-        console.log(`[server] Chatwoot Webhook URL: ${domain}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+        // Убираем порт из URL, если он есть, так как Traefik будет работать на стандартных портах
+        const domainWithoutPort = domain.replace(/:\d+$/, '');
+        console.log(`[server] VK Callback URL: ${domainWithoutPort}/vk/callback/${config.vk.callback_id}`);
+        console.log(`[server] Chatwoot Webhook URL: ${domainWithoutPort}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
       } else {
         // Для production через Traefik используем HTTPS без порта
         // Для разработки добавляем порт если он не стандартный
