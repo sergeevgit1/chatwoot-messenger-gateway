@@ -119,12 +119,20 @@ async function startServer(): Promise<void> {
       console.log(`[server] Chatwoot Account ID: ${config.chatwoot.account_id}`);
       
       // Вывод информации о вебхуках
-      const protocol = config.server.port === 443 ? 'https' : 'http';
-      const domain = config.server.domain;
-      const port = config.server.port !== 80 && config.server.port !== 443 ? `:${config.server.port}` : '';
+      let domain = config.server.domain;
       
-      console.log(`[server] VK Callback URL: ${protocol}://${domain}${port}/vk/callback/${config.vk.callback_id}`);
-      console.log(`[server] Chatwoot Webhook URL: ${protocol}://${domain}${port}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+      // Если домен уже содержит протокол, используем его как есть
+      if (domain.startsWith('http://') || domain.startsWith('https://')) {
+        console.log(`[server] VK Callback URL: ${domain}/vk/callback/${config.vk.callback_id}`);
+        console.log(`[server] Chatwoot Webhook URL: ${domain}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+      } else {
+        // Иначе добавляем протокол в зависимости от порта
+        const protocol = config.server.port === 443 ? 'https' : 'http';
+        const port = config.server.port !== 80 && config.server.port !== 443 ? `:${config.server.port}` : '';
+        
+        console.log(`[server] VK Callback URL: ${protocol}://${domain}${port}/vk/callback/${config.vk.callback_id}`);
+        console.log(`[server] Chatwoot Webhook URL: ${protocol}://${domain}${port}/chatwoot/webhook/${config.chatwoot.webhook_id}`);
+      }
     });
   } catch (error) {
     console.error('[server] Failed to start server:', error);
