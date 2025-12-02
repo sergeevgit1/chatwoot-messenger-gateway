@@ -11,7 +11,7 @@ COPY packages/ ./packages/
 COPY apps/vk-connector/package*.json ./apps/vk-connector/
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY packages/ ./packages/
@@ -46,7 +46,7 @@ COPY packages/ ./packages/
 COPY apps/vk-connector/package*.json ./apps/vk-connector/
 
 # Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
 
 # Copy built artifacts from builder stage
 COPY --from=builder --chown=vkconnector:nodejs /app/packages/shared/types/dist ./packages/shared/types/dist
