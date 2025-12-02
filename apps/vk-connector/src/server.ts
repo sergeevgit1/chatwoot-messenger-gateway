@@ -24,6 +24,10 @@ const chatwootService = new ChatwootService(chatwootClient, config.vk);
 const vkAdapter = new VKAdapter(config.vk);
 
 // Middleware
+app.use((req, res, next) => {
+  console.info(`[server] ${req.method} ${req.url} - Headers:`, JSON.stringify(req.headers, null, 2));
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -57,9 +61,11 @@ app.get('/', (req: any, res: any) => {
 // VK Callback endpoint
 app.post(`/vk/callback/${config.vk.callback_id}`, async (req: any, res: any) => {
   try {
+    console.info('[server] VK callback received:', JSON.stringify(req.body, null, 2));
     const payload: VKCallbackPayload = req.body;
     const response = await vkAdapter.handleCallback(payload);
     
+    console.info('[server] VK callback response:', response);
     // VK expects plain text response
     res.type('text/plain').send(response);
   } catch (error) {
@@ -126,6 +132,54 @@ async function handleChatwootOutgoing(payload: any): Promise<void> {
 // Start server
 async function startServer(): Promise<void> {
   try {
+    // Устанавливаем связь между VKAdapter и ChatwootService
+    vkAdapter.onMessage(async (message) => {
+      try {
+        console.info('[server] Processing VK message:', JSON.stringify(message, null, 2));
+        
+        // Обогащаем контакт данными из VK
+        const vkProfile = await chatwootService.enrichVkContact(message.sender_id || message.recipient_id);
+        
+        // Обеспечиваем наличие контакта в Chatwoot
+        const contact = await chatwootService.ensureContact({
+          inbox_id: config.vk.inbox_id,
+          search_key: message.sender_id || message.recipient_id,
+          name: vkProfile.name,
+          custom_attributes: {
+            ...vkProfile.custom_attributes,
+            vk_peer_id: message.recipient_id
+          },
+          additional_attributes: vkProfile.additional_attributes
+        });
+        
+        console.info('[server] Contact ensured:', contact);
+        
+        // Обеспечиваем наличие беседы
+        const conversationId = await chatwootService.ensureConversation({
+          inbox_id: config.vk.inbox_id,
+          contact_id: contact.id,
+          source_id: contact.source_id,
+          custom_attributes: {
+            channel: 'vk',
+            vk_peer_id: message.recipient_id
+          }
+        });
+        
+        console.info('[server] Conversation ensured:', conversationId);
+        
+        // Создаем сообщение в Chatwoot
+        const messageId = await chatwootService.createMessage({
+          conversation_id: conversationId,
+          content: message.content.type === 'text' ? message.content.text : '',
+          direction: 'incoming'
+        });
+        
+        console.info('[server] Message created in Chatwoot:', messageId);
+      } catch (error) {
+        console.error('[server] Failed to process VK message:', error);
+      }
+    });
+    
     await vkAdapter.start();
     
     app.listen(config.server.port, config.server.node_env === 'production' ? '0.0.0.0' : config.server.host, () => {
