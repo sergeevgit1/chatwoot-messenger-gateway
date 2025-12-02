@@ -104,6 +104,7 @@ export interface VKUserProfile {
   online_app?: number;
   verified?: number;
   trending?: number;
+  sex?: number;
   female?: number;
   has_photo?: number;
   has_mobile?: number;

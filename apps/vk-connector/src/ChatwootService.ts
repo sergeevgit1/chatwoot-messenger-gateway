@@ -23,7 +23,7 @@ export class ChatwootService implements IChatwootService {
     email?: string;
     custom_attributes: Record<string, any>;
     additional_attributes?: Record<string, any>;
-  }): Promise<{ id: number; source_id: string }> {
+  }): Promise<{ id: number; source_id: string; vk_user_id?: string }> {
     /**
      * Upsert contact and return {'id', 'source_id'}.
      * Strategy:
@@ -128,15 +128,17 @@ export class ChatwootService implements IChatwootService {
       }
     }
 
-    // 4) Extract source_id
+    // 4) Extract source_id and vk_user_id
     const sourceId = this.extractSourceIdForInbox(contact, params.inbox_id) || params.search_key;
+    const extractedVkUserId = params.custom_attributes?.vk_user_id;
     console.info(
-      `[chatwoot] ensure_contact ok id=${contact.id} inbox=${params.inbox_id} source_id=${sourceId}`
+      `[chatwoot] ensure_contact ok id=${contact.id} inbox=${params.inbox_id} source_id=${sourceId} vk_user_id=${extractedVkUserId}`
     );
     
     return { 
       id: parseInt(String(contact.id)), 
-      source_id: sourceId 
+      source_id: sourceId,
+      vk_user_id: extractedVkUserId
     };
   }
 
@@ -144,27 +146,48 @@ export class ChatwootService implements IChatwootService {
     inbox_id: number;
     contact_id: number;
     source_id: string;
+    vk_user_id?: string;
     custom_attributes?: Record<string, any>;
   }): Promise<number> {
     const res = await this.client.listConversations(params.contact_id);
     const conversations = (res || {}).payload || [];
 
+    // Find existing open/pending conversation for this VK user
     for (const conv of conversations) {
       if (conv.status !== 'open' && conv.status !== 'pending') {
         continue;
       }
       
-      const nestedSourceId = conv.source_id;
+      // Check if conversation belongs to the same inbox
+      if (conv.inbox_id && parseInt(String(conv.inbox_id)) !== params.inbox_id) {
+        continue;
+      }
       
+      // For VK conversations, match by vk_user_id in custom_attributes
+      const convVkUserId = conv.custom_attributes?.vk_user_id;
+      if (params.vk_user_id && convVkUserId === params.vk_user_id) {
+        console.info(`[chatwoot] reuse conversation id=${conv.id} for vk_user_id=${params.vk_user_id}`);
+        return parseInt(String(conv.id));
+      }
+      
+      // Fallback: match by source_id
+      const nestedSourceId = conv.source_id;
       if (nestedSourceId === params.source_id) {
-        console.info(`[chatwoot] reuse conversation id=${conv.id}`);
+        console.info(`[chatwoot] reuse conversation id=${conv.id} by source_id=${params.source_id}`);
         return parseInt(String(conv.id));
       }
     }
 
     const extra: Record<string, any> = {};
-    if (params.custom_attributes) {
-      extra.custom_attributes = params.custom_attributes;
+    const customAttrs = { ...(params.custom_attributes || {}) };
+    
+    // Always store vk_user_id in conversation custom_attributes for future matching
+    if (params.vk_user_id) {
+      customAttrs.vk_user_id = params.vk_user_id;
+    }
+    
+    if (Object.keys(customAttrs).length > 0) {
+      extra.custom_attributes = customAttrs;
     }
 
     const created = await this.client.createConversation({
@@ -218,19 +241,82 @@ export class ChatwootService implements IChatwootService {
       const firstName = (profile.first_name || '').trim();
       const lastName = (profile.last_name || '').trim();
       const screenName = (profile.screen_name || '').trim();
-      const bdate = (profile.bdate || '').trim() || undefined;
-
-      // Extract city from profile
-      const cityName = extractCityName(profile.city);
-      if (cityName) {
-        additionalAttributes.city = cityName;
-      }
-
+      
       vkName = formatVkName(firstName, lastName, screenName);
 
-      if (bdate) {
-        customAttributes.vk_bdate = bdate;
+      // Basic info
+      if (profile.bdate) customAttributes.vk_bdate = profile.bdate;
+      if (profile.screen_name) customAttributes.vk_screen_name = profile.screen_name;
+      if (screenName) additionalAttributes.vk_profile_url = `https://vk.com/${screenName}`;
+      
+      // Location
+      const cityName = extractCityName(profile.city);
+      if (cityName) additionalAttributes.city = cityName;
+      if (profile.country && typeof profile.country === 'object') {
+        additionalAttributes.country = profile.country.title;
       }
+      if (profile.home_town) additionalAttributes.home_town = profile.home_town;
+      
+      // Photos
+      if (profile.photo_100) additionalAttributes.vk_photo_100 = profile.photo_100;
+      if (profile.photo_200_orig) additionalAttributes.vk_photo_200 = profile.photo_200_orig;
+      if (profile.photo_max) additionalAttributes.vk_photo_max = profile.photo_max;
+      
+      // Status and activity
+      if (profile.status) additionalAttributes.vk_status = profile.status;
+      if (profile.online !== undefined) {
+        additionalAttributes.vk_online = profile.online === 1 ? 'Yes' : 'No';
+        if (profile.online_mobile === 1) {
+          additionalAttributes.vk_online_device = 'Mobile';
+        }
+      }
+      if (profile.verified === 1) additionalAttributes.vk_verified = 'Yes';
+      
+      // Last seen
+      if (profile.last_seen?.time) {
+        const lastSeenDate = new Date(profile.last_seen.time * 1000);
+        additionalAttributes.vk_last_seen = lastSeenDate.toISOString();
+      }
+      
+      // Demographics
+      if (profile.sex !== undefined) {
+        const sexMap: Record<number, string> = { 0: 'Unknown', 1: 'Female', 2: 'Male' };
+        additionalAttributes.vk_sex = sexMap[profile.sex] || 'Unknown';
+      }
+      if (profile.relation !== undefined) {
+        const relationMap: Record<number, string> = {
+          0: 'Not specified', 1: 'Single', 2: 'In a relationship',
+          3: 'Engaged', 4: 'Married', 5: 'Complicated',
+          6: 'Actively searching', 7: 'In love', 8: 'In a civil union'
+        };
+        additionalAttributes.vk_relation = relationMap[profile.relation] || 'Not specified';
+      }
+      
+      // Education
+      if (profile.universities && profile.universities.length > 0) {
+        const uni = profile.universities[0];
+        if (uni.name) additionalAttributes.vk_university = uni.name;
+        if (uni.faculty_name) additionalAttributes.vk_faculty = uni.faculty_name;
+        if (uni.graduation) additionalAttributes.vk_graduation_year = uni.graduation.toString();
+      }
+      
+      // Occupation
+      if (profile.occupation) {
+        if (profile.occupation.name) additionalAttributes.vk_occupation = profile.occupation.name;
+        if (profile.occupation.type) additionalAttributes.vk_occupation_type = profile.occupation.type;
+      }
+      
+      // Social networks
+      if (profile.site) additionalAttributes.website = profile.site;
+      if (profile.facebook) additionalAttributes.facebook = profile.facebook;
+      if (profile.twitter) additionalAttributes.twitter = profile.twitter;
+      if (profile.instagram) additionalAttributes.instagram = profile.instagram;
+      
+      // Timezone
+      if (profile.timezone !== undefined) {
+        additionalAttributes.vk_timezone = `UTC${profile.timezone >= 0 ? '+' : ''}${profile.timezone}`;
+      }
+      
     } catch (e) {
       console.warn('[vk] Failed to fetch profile:', e);
     }

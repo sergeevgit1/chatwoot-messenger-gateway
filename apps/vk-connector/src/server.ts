@@ -98,6 +98,8 @@ app.post(`/chatwoot/webhook/${config.chatwoot.webhook_id}`, async (req: any, res
 
 async function handleChatwootOutgoing(payload: any): Promise<void> {
   try {
+    console.info('[server] Chatwoot outgoing webhook payload:', JSON.stringify(payload, null, 2));
+    
     const content = payload.content || '';
     const conversation = payload.conversation || {};
     const meta = conversation.meta || {};
@@ -109,13 +111,22 @@ async function handleChatwootOutgoing(payload: any): Promise<void> {
       return;
     }
 
-    // Extract recipient_id from Chatwoot contact
-    const recipientId = 
+    // Extract recipient_id from multiple possible locations
+    let recipientId = 
+      // Try conversation custom attributes first (most reliable)
+      conversation.custom_attributes?.vk_user_id ||
+      conversation.custom_attributes?.vk_peer_id ||
+      // Try contact custom attributes
+      sender.custom_attributes?.vk_user_id ||
       sender.custom_attributes?.vk_peer_id ||
-      sender.custom_attributes?.vk_user_id;
+      // Try additional attributes
+      sender.additional_attributes?.vk_user_id;
 
     if (!recipientId) {
-      console.warn('[server] Missing VK recipient_id in Chatwoot webhook');
+      console.error('[server] Missing VK recipient_id in Chatwoot webhook');
+      console.error('[server] Conversation custom_attributes:', conversation.custom_attributes);
+      console.error('[server] Sender custom_attributes:', sender.custom_attributes);
+      console.error('[server] Sender additional_attributes:', sender.additional_attributes);
       return;
     }
 
@@ -159,6 +170,7 @@ async function startServer(): Promise<void> {
           inbox_id: config.vk.inbox_id,
           contact_id: contact.id,
           source_id: contact.source_id,
+          vk_user_id: contact.vk_user_id,
           custom_attributes: {
             channel: 'vk',
             vk_peer_id: message.recipient_id

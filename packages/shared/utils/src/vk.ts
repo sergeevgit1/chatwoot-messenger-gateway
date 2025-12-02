@@ -11,9 +11,25 @@ export async function fetchVkProfile(
   userId: string
 ): Promise<VKUserProfile> {
   const url = 'https://api.vk.com/method/users.get';
+  // Request all available public profile fields
+  const fields = [
+    'photo_50', 'photo_100', 'photo_200_orig', 'photo_max',
+    'online', 'online_mobile', 'verified',
+    'sex', 'bdate', 'city', 'country',
+    'home_town', 'screen_name',
+    'has_photo', 'has_mobile',
+    'status',
+    'last_seen',
+    'relation',
+    'universities', 'schools',
+    'occupation',
+    'site', 'facebook', 'twitter', 'instagram',
+    'timezone'
+  ].join(',');
+  
   const params = new URLSearchParams({
     user_ids: userId,
-    fields: 'bdate,city,screen_name',
+    fields: fields,
     access_token: accessToken,
     v: apiVersion,
   });
